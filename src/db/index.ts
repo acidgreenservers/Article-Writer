@@ -1,122 +1,167 @@
-import type { Document } from '../types';
+import type { Document, DocumentImage } from '../types';
 
 const DB_NAME = 'article-writer-db';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 const DOC_STORE = 'documents';
+const IMG_STORE = 'images';
 
+/**
+ * Opens the IndexedDB with a robust migration system.
+ */
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      console.log(`[db] Schema upgrade: v${event.oldVersion} → v${DB_VERSION}`);
-      if (!db.objectStoreNames.contains(DOC_STORE)) {
-        const store = db.createObjectStore(DOC_STORE, { keyPath: 'id' });
-        store.createIndex('updatedAt', 'updatedAt', { unique: false });
-        console.log('[db] ✓ Created "documents" store');
+      const db = request.result;
+      const oldVersion = event.oldVersion;
+      const transaction = request.transaction!;
+
+      console.log(`[db] Upgrade triggered: v${oldVersion} → v${DB_VERSION}`);
+
+      // Version 1: Initial schema
+      if (oldVersion < 1) {
+        if (!db.objectStoreNames.contains(DOC_STORE)) {
+          const store = db.createObjectStore(DOC_STORE, { keyPath: 'id' });
+          store.createIndex('updatedAt', 'updatedAt', { unique: false });
+          console.log('[db] v1: Created documents store');
+        }
+      }
+
+      // Version 2: Added image store
+      if (oldVersion < 2) {
+        if (!db.objectStoreNames.contains(IMG_STORE)) {
+          const store = db.createObjectStore(IMG_STORE, { keyPath: 'id' });
+          store.createIndex('documentId', 'documentId', { unique: false });
+          console.log('[db] v2: Created images store');
+        } else {
+          const store = transaction.objectStore(IMG_STORE);
+          if (!store.indexNames.contains('documentId')) {
+            store.createIndex('documentId', 'documentId', { unique: false });
+            console.log('[db] v2: Added documentId index to images store');
+          }
+        }
+      }
+
+      // Version 3: Future-proofing and ensuring consistency
+      if (oldVersion < 3) {
+        console.log('[db] v3: Migration complete');
       }
     };
 
-    request.onsuccess = () => {
-      const db = request.result;
-      console.log('[db] ✓ Database opened. Stores:', Array.from(db.objectStoreNames).join(', '));
-      resolve(db);
-    };
-
+    request.onsuccess = () => resolve(request.result);
     request.onerror = () => {
-      console.error('[db] ✗ Open failed:', request.error);
+      console.error('[db] Failed to open database:', request.error);
       reject(request.error);
     };
   });
 }
 
-function closeDB(db: IDBDatabase) {
-  try { db.close(); } catch (_) { /* already closed */ }
-}
-
-export async function getAllDocuments(): Promise<Document[]> {
+/**
+ * Helper for running transactions.
+ */
+async function withStore<T>(
+  storeName: string,
+  mode: IDBTransactionMode,
+  callback: (store: IDBObjectStore) => IDBRequest<T> | void
+): Promise<T> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(DOC_STORE, 'readonly');
-    const store = tx.objectStore(DOC_STORE);
-    const req = store.getAll();
+    const tx = db.transaction(storeName, mode);
+    const store = tx.objectStore(storeName);
+    const request = callback(store);
 
-    req.onsuccess = () => {
-      const docs = (req.result as Document[]).sort((a, b) => b.updatedAt - a.updatedAt);
-      console.log(`[db] → Loaded ${docs.length} document(s)`);
-      docs.forEach(d => console.log(`[db]   "${d.title}" id=${d.id.slice(0,8)} ${d.content.length} chars`));
-      resolve(docs);
+    if (request) {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    }
+
+    tx.oncomplete = () => {
+      if (!request) resolve(undefined as T);
+      db.close();
     };
-
-    req.onerror = () => { reject(req.error); };
-    tx.oncomplete = () => closeDB(db);
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
   });
+}
+
+// ── Document Operations ────────────────────────────────────────
+
+export async function getAllDocuments(): Promise<Document[]> {
+  const docs = await withStore<Document[]>(DOC_STORE, 'readonly', (store) => store.getAll());
+  return docs.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export async function getDocument(id: string): Promise<Document | undefined> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DOC_STORE, 'readonly');
-    const store = tx.objectStore(DOC_STORE);
-    const req = store.get(id);
-
-    req.onsuccess = () => resolve(req.result as Document | undefined);
-    req.onerror = () => reject(req.error);
-    tx.oncomplete = () => closeDB(db);
-  });
+  return withStore<Document | undefined>(DOC_STORE, 'readonly', (store) => store.get(id));
 }
 
-export async function saveDocument(doc: Document): Promise<Document> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DOC_STORE, 'readwrite');
-    const store = tx.objectStore(DOC_STORE);
-    const putReq = store.put(doc);
-
-    putReq.onsuccess = () => {
-      console.log(`[db] → PUT ok: "${doc.title}" id=${doc.id.slice(0,8)}`);
-    };
-
-    putReq.onerror = () => {
-      console.error(`[db] ✗ PUT failed:`, putReq.error);
-      reject(putReq.error);
-    };
-
-    tx.oncomplete = async () => {
-      closeDB(db);
-      try {
-        const verified = await getDocument(doc.id);
-        if (verified) {
-          console.log(`[db] ✓ Verified: "${verified.title}" ${verified.content.length} chars`);
-          resolve(verified);
-        } else {
-          console.error(`[db] ✗ VERIFY FAILED: ${doc.id} not found after save`);
-          reject(new Error('Document not found after save'));
-        }
-      } catch (e) {
-        console.error('[db] ✗ VERIFY error:', e);
-        reject(e);
-      }
-    };
-
-    tx.onerror = () => { reject(tx.error); };
+export async function saveDocument(doc: Document): Promise<void> {
+  await withStore<void>(DOC_STORE, 'readwrite', (store) => {
+    store.put(doc);
   });
 }
 
 export async function deleteDocument(id: string): Promise<void> {
+  // When deleting a document, we should also delete its images for a "smooth topology"
+  await deleteImagesByDocument(id);
+  await withStore<void>(DOC_STORE, 'readwrite', (store) => {
+    store.delete(id);
+  });
+}
+
+// ── Image Operations ───────────────────────────────────────────
+
+export async function getAllImages(): Promise<DocumentImage[]> {
+  return withStore<DocumentImage[]>(IMG_STORE, 'readonly', (store) => store.getAll());
+}
+
+export async function getImagesByDocument(documentId: string): Promise<DocumentImage[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(DOC_STORE, 'readwrite');
-    const store = tx.objectStore(DOC_STORE);
-    store.delete(id);
+    const tx = db.transaction(IMG_STORE, 'readonly');
+    const store = tx.objectStore(IMG_STORE);
+    const index = store.index('documentId');
+    const request = index.getAll(documentId);
 
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+    tx.oncomplete = () => db.close();
+  });
+}
+
+export async function saveImage(image: DocumentImage): Promise<void> {
+  await withStore<void>(IMG_STORE, 'readwrite', (store) => {
+    store.put(image);
+  });
+}
+
+export async function deleteImage(id: string): Promise<void> {
+  await withStore<void>(IMG_STORE, 'readwrite', (store) => {
+    store.delete(id);
+  });
+}
+
+export async function deleteImagesByDocument(documentId: string): Promise<void> {
+  const images = await getImagesByDocument(documentId);
+  if (images.length === 0) return;
+
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IMG_STORE, 'readwrite');
+    const store = tx.objectStore(IMG_STORE);
+    for (const img of images) {
+      store.delete(img.id);
+    }
     tx.oncomplete = () => {
-      console.log(`[db] → DELETE ok: id=${id.slice(0,8)}`);
-      closeDB(db);
+      db.close();
       resolve();
     };
-
-    tx.onerror = () => { reject(tx.error); };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
   });
 }

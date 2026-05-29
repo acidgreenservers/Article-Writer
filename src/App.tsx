@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import type { Document, UploadedImage } from './types';
-import { createNewDocument, countWords } from './utils/documentUtils';
-import { useAutoSave } from './utils/useAutoSave';
+import { countWords } from './utils/documentUtils';
+import { useDocuments } from './hooks/useDocuments';
 import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 import { PreviewModal } from './components/PreviewModal';
@@ -13,55 +12,34 @@ import { UploadedItemsModal } from './components/UploadedItemsModal';
 import { ExportModal } from './components/ExportModal';
 import { LinkModal } from './components/LinkModal';
 
-const initialDoc = createNewDocument();
-
 export default function App() {
-  const [documents, setDocuments] = useState<Document[]>([initialDoc]);
-  const [activeDocId, setActiveDocId] = useState<string>(initialDoc.id);
+  const {
+    documents,
+    activeDoc,
+    activeDocId,
+    setActiveDocId,
+    images,
+    isLoading,
+    saveState,
+    updateDocument,
+    addDocument,
+    removeDocument,
+    addImage,
+    removeImage,
+  } = useDocuments();
+
   const [isDark, setIsDark] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [showImageUploader, setShowImageUploader] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showSaveToast, setShowSaveToast] = useState(false);
   const [showUploadedItems, setShowUploadedItems] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [exportFormat, setExportFormat] = useState<'md' | 'html'>('md');
-  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const activeDoc = documents.find((d) => d.id === activeDocId) || documents[0];
   const wordCount = countWords(activeDoc?.content || '');
-
-  const flashSaveToast = useCallback(() => {
-    setShowSaveToast(true);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setShowSaveToast(false), 2000);
-  }, []);
-
-  const handleAutoSave = useCallback(() => { flashSaveToast(); }, [flashSaveToast]);
-  const { markSaved } = useAutoSave(documents, handleAutoSave);
-
-  const updateDoc = useCallback((id: string, updates: Partial<Document>) => {
-    setDocuments((prev) => prev.map((d) => d.id === id ? { ...d, ...updates, updatedAt: Date.now() } : d));
-  }, []);
-
-  const handleNewDoc = useCallback(() => {
-    const newDoc = createNewDocument();
-    setDocuments((prev) => [...prev, newDoc]);
-    setActiveDocId(newDoc.id);
-  }, []);
-
-  const handleDeleteDoc = useCallback(() => {
-    if (documents.length <= 1) return;
-    setDocuments((prev) => {
-      const filtered = prev.filter((d) => d.id !== activeDocId);
-      if (filtered.length > 0) setActiveDocId(filtered[0].id);
-      return filtered;
-    });
-    setShowDeleteConfirm(false);
-  }, [activeDocId, documents.length]);
 
   const handleInsertAtCursor = useCallback((markdown: string) => {
     if (!activeDoc) return;
@@ -78,8 +56,8 @@ export default function App() {
     } else {
       newContent = activeDoc.content + '\n' + markdown;
     }
-    updateDoc(activeDoc.id, { content: newContent });
-  }, [activeDoc, updateDoc]);
+    updateDocument(activeDoc.id, { content: newContent });
+  }, [activeDoc, updateDocument]);
 
   const handleInsertImage = useCallback((markdown: string) => {
     handleInsertAtCursor('\n' + markdown + '\n');
@@ -146,20 +124,18 @@ export default function App() {
         return;
     }
 
-    updateDoc(activeDoc.id, { content: newContent });
+    updateDocument(activeDoc.id, { content: newContent });
     setTimeout(() => {
       textarea.focus();
       const newPos = start + cursorOffset;
       textarea.setSelectionRange(newPos, newPos);
     }, 0);
-  }, [activeDoc, updateDoc]);
+  }, [activeDoc, updateDocument]);
 
   const handleAction = useCallback((type: string) => {
     if (!activeDoc) return;
     switch (type) {
       case 'save':
-        markSaved();
-        flashSaveToast();
         break;
       case 'html':
         setExportFormat('html');
@@ -173,25 +149,36 @@ export default function App() {
         setShowDeleteConfirm(true);
         break;
     }
-  }, [activeDoc, flashSaveToast, markSaved]);
+  }, [activeDoc]);
 
-  const handleDeleteUploadedImage = useCallback((id: string) => {
-    setUploadedImages((prev) => prev.filter((img) => img.id !== id));
-  }, []);
+  const handleUploadImages = useCallback(async (newImages: any[]) => {
+    for (const img of newImages) {
+      await addImage({
+        ...img,
+        documentId: activeDoc.id,
+        createdAt: Date.now()
+      });
+    }
+  }, [activeDoc, addImage]);
 
-  if (!activeDoc) return null;
+  if (isLoading || !activeDoc) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center" style={{ backgroundColor: isDark ? '#0d1117' : '#ffffff' }}>
+        <div className="text-sm" style={{ color: isDark ? '#e6edf3' : '#1f2937' }}>Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden" style={{ backgroundColor: isDark ? '#0d1117' : '#ffffff' }}>
-      <Sidebar documents={documents} activeDocId={activeDocId} onSelectDoc={setActiveDocId} onNewDoc={handleNewDoc} isDark={isDark} />
+      <Sidebar documents={documents} activeDocId={activeDocId} onSelectDoc={setActiveDocId} onNewDoc={addDocument} isDark={isDark} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Title & Tags */}
         <div className="px-3 pt-3 space-y-2">
           <input
             type="text"
             value={activeDoc.title}
-            onChange={(e) => updateDoc(activeDoc.id, { title: e.target.value })}
+            onChange={(e) => updateDocument(activeDoc.id, { title: e.target.value })}
             placeholder="Untitled Document"
             className="w-full px-3.5 py-2 rounded-md text-sm outline-none transition-colors"
             style={{
@@ -206,7 +193,7 @@ export default function App() {
             value={activeDoc.tags.join(', ')}
             onChange={(e) => {
               const tags = e.target.value.split(',').map((t) => t.trim()).filter(Boolean);
-              updateDoc(activeDoc.id, { tags });
+              updateDocument(activeDoc.id, { tags });
             }}
             placeholder="Tags (comma separated)"
             className="w-full px-3.5 py-2 rounded-md text-sm outline-none transition-colors"
@@ -218,7 +205,6 @@ export default function App() {
           />
         </div>
 
-        {/* Toolbar */}
         <Toolbar
           onFormat={handleFormat}
           onAction={handleAction}
@@ -230,24 +216,22 @@ export default function App() {
           onImageClick={() => setShowImageUploader((p) => !p)}
         />
 
-        {/* Image Uploader Accordion */}
         {showImageUploader && (
           <div className="px-3 py-2" style={{ borderBottom: '1px solid ' + (isDark ? '#21262d' : '#e5e7eb') }}>
             <ImageUploader
-              onUpload={setUploadedImages}
+              onUpload={handleUploadImages}
               onViewItems={() => setShowUploadedItems(true)}
               isDark={isDark}
-              uploadedImages={uploadedImages}
+              uploadedImages={images}
             />
           </div>
         )}
 
-        {/* Editor */}
         <div className="flex-1 overflow-hidden">
           <textarea
             ref={textareaRef}
             value={activeDoc.content}
-            onChange={(e) => updateDoc(activeDoc.id, { content: e.target.value })}
+            onChange={(e) => updateDocument(activeDoc.id, { content: e.target.value })}
             placeholder="Start writing..."
             className="w-full h-full resize-none outline-none p-4 text-sm leading-relaxed"
             style={{
@@ -261,13 +245,12 @@ export default function App() {
         <StatusBar wordCount={wordCount} isDark={isDark} />
       </div>
 
-      {/* Modals */}
       {showPreview && <PreviewModal document={activeDoc} isDark={isDark} onClose={() => setShowPreview(false)} />}
-      {showDeleteConfirm && <DeleteConfirmModal documentTitle={activeDoc.title} isDark={isDark} onConfirm={handleDeleteDoc} onCancel={() => setShowDeleteConfirm(false)} />}
-      {showUploadedItems && <UploadedItemsModal images={uploadedImages} isDark={isDark} onInsert={handleInsertImage} onDelete={handleDeleteUploadedImage} onClose={() => setShowUploadedItems(false)} />}
-      {showExportModal && <ExportModal document={activeDoc} images={uploadedImages} format={exportFormat} isDark={isDark} onClose={() => setShowExportModal(false)} />}
+      {showDeleteConfirm && <DeleteConfirmModal documentTitle={activeDoc.title} isDark={isDark} onConfirm={() => { removeDocument(activeDoc.id); setShowDeleteConfirm(false); }} onCancel={() => setShowDeleteConfirm(false)} />}
+      {showUploadedItems && <UploadedItemsModal images={images as any} isDark={isDark} onInsert={handleInsertImage} onDelete={removeImage} onClose={() => setShowUploadedItems(false)} />}
+      {showExportModal && <ExportModal document={activeDoc} images={images as any} format={exportFormat} isDark={isDark} onClose={() => setShowExportModal(false)} />}
       {showLinkModal && <LinkModal isDark={isDark} onInsert={handleInsertLink} onClose={() => setShowLinkModal(false)} />}
-      {showSaveToast && <SaveToast isDark={isDark} />}
+      {saveState === 'saving' && <SaveToast isDark={isDark} />}
     </div>
   );
 }
