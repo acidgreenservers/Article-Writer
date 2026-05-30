@@ -23,6 +23,7 @@ export interface UploadedImage {
   url: string;
   type: string;
   size: number;
+  data: ArrayBuffer; // Include binary data for ZIP export
 }
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
