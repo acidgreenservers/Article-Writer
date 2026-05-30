@@ -12,6 +12,7 @@ import { UploadedItemsModal } from './components/UploadedItemsModal';
 import { ExportModal } from './components/ExportModal';
 import { LinkModal } from './components/LinkModal';
 import { InfoModal } from './components/InfoModal';
+import { TagInput } from './components/TagInput';
 
 export default function App() {
   const {
@@ -206,20 +207,11 @@ export default function App() {
               fontStyle: activeDoc.title === 'Untitled Document' ? 'italic' : 'normal',
             }}
           />
-          <input
-            type="text"
-            value={activeDoc.tags.join(', ')}
-            onChange={(e) => {
-              const tags = e.target.value.split(',').map((t) => t.trim()).filter(Boolean);
-              updateDocument(activeDoc.id, { tags });
-            }}
-            placeholder="Tags (comma separated)"
-            className="w-full px-3.5 py-2 rounded-md text-sm outline-none transition-colors"
-            style={{
-              backgroundColor: isDark ? '#1c2128' : '#f3f4f6',
-              color: isDark ? '#e6edf3' : '#1f2937',
-              border: '1px solid ' + (isDark ? '#30363d' : '#e5e7eb'),
-            }}
+          <TagInput
+            tags={activeDoc.tags}
+            allDocuments={documents}
+            onChange={(tags) => updateDocument(activeDoc.id, { tags })}
+            isDark={isDark}
           />
         </div>
 
