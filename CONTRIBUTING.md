@@ -212,9 +212,9 @@ Test workflows:
 test('preview updates on content change', () => {
   const { getByRole, getByText } = render(<App />)
   const textarea = getByRole('textbox')
-  
+
   fireEvent.change(textarea, { target: { value: '# Title' } })
-  
+
   expect(getByText('Title')).toBeInTheDocument()
 })
 ```

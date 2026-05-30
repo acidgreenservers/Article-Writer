@@ -112,7 +112,7 @@ When submitting code, ensure:
    // ❌ Never
    eval(userInput)
    new Function(userInput)()
-   
+
    // ✅ Instead
    parseAndValidate(userInput)
    ```
@@ -121,7 +121,7 @@ When submitting code, ensure:
    ```typescript
    // ✅ Safe: React escapes by default
    <div>{userContent}</div>
-   
+
    // ❌ Unsafe: dangerouslySetInnerHTML
    <div dangerouslySetInnerHTML={{ __html: userContent }} />
    ```
@@ -142,7 +142,7 @@ When submitting code, ensure:
    ```typescript
    // ❌ Avoid
    console.log('User document:', fullContent)
-   
+
    // ✅ Instead
    console.log('Document loaded: length', content.length)
    ```
