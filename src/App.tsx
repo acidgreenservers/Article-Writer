@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { countWords } from './utils/documentUtils';
 import { useDocuments } from './hooks/useDocuments';
 import { Sidebar } from './components/Sidebar';
@@ -11,6 +11,7 @@ import { SaveToast } from './components/SaveToast';
 import { UploadedItemsModal } from './components/UploadedItemsModal';
 import { ExportModal } from './components/ExportModal';
 import { LinkModal } from './components/LinkModal';
+import { InfoModal } from './components/InfoModal';
 
 export default function App() {
   const {
@@ -35,6 +36,7 @@ export default function App() {
   const [showUploadedItems, setShowUploadedItems] = useState<boolean>(false);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
   const [showLinkModal, setShowLinkModal] = useState<boolean>(false);
+  const [showInfoModal, setShowInfoModal] = useState<boolean>(false);
   const [exportFormat, setExportFormat] = useState<'md' | 'html'>('md');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -180,7 +182,14 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden" style={{ backgroundColor: isDark ? '#0d1117' : '#ffffff' }}>
-      <Sidebar documents={documents} activeDocId={activeDocId} onSelectDoc={setActiveDocId} onNewDoc={addDocument} isDark={isDark} />
+      <Sidebar
+        documents={documents}
+        activeDocId={activeDocId}
+        onSelectDoc={setActiveDocId}
+        onNewDoc={addDocument}
+        onInfoClick={() => setShowInfoModal(true)}
+        isDark={isDark}
+      />
 
       <div className="flex-1 flex flex-col min-w-0">
         <div className="px-3 pt-3 space-y-2">
@@ -259,6 +268,7 @@ export default function App() {
       {showUploadedItems && <UploadedItemsModal images={images} isDark={isDark} onInsert={handleInsertImage} onDelete={removeImage} onClose={() => setShowUploadedItems(false)} />}
       {showExportModal && <ExportModal document={activeDoc} images={images} format={exportFormat} isDark={isDark} onClose={() => setShowExportModal(false)} />}
       {showLinkModal && <LinkModal isDark={isDark} onInsert={handleInsertLink} onClose={() => setShowLinkModal(false)} />}
+      {showInfoModal && <InfoModal isDark={isDark} onClose={() => setShowInfoModal(false)} />}
       {(saveState === 'saving' || saveState === 'saved') && <SaveToast isDark={isDark} />}
     </div>
   );

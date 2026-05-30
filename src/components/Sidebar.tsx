@@ -6,10 +6,11 @@ interface SidebarProps {
   activeDocId: string | null;
   onSelectDoc: (id: string) => void;
   onNewDoc: () => void;
+  onInfoClick: () => void;
   isDark: boolean;
 }
 
-export function Sidebar({ documents, activeDocId, onSelectDoc, onNewDoc, isDark }: SidebarProps) {
+export function Sidebar({ documents, activeDocId, onSelectDoc, onNewDoc, onInfoClick, isDark }: SidebarProps) {
   const totalWords = documents.reduce((sum, d) => sum + countWords(d.content), 0);
 
   return (
@@ -23,10 +24,13 @@ export function Sidebar({ documents, activeDocId, onSelectDoc, onNewDoc, isDark 
       }}
     >
       <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2 mb-3">
+        <button
+          onClick={onInfoClick}
+          className="flex items-center gap-2 mb-3 hover:opacity-80 transition-opacity cursor-pointer text-left w-full"
+        >
           <span className="text-lg">📝</span>
           <span className="font-semibold text-sm" style={{ color: isDark ? '#e6edf3' : '#1f2937' }}>Article Writer</span>
-        </div>
+        </button>
         <button
           onClick={onNewDoc}
           className="w-full py-2 px-3 rounded-md text-sm font-medium text-white transition-colors"
