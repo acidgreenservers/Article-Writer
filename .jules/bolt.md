@@ -1,0 +1,3 @@
+## 2025-05-15 - [React Hook & Utility Optimization]
+**Learning:** High-frequency React hooks (like auto-save on typing) suffer significantly from $O(N \cdot M)$ operations such as `JSON.stringify` for change detection. In an immutable state system, reference equality check (`===`) is $O(1)$ and serves as a highly effective gate. Additionally, standard string utilities like `split()` can cause significant GC pressure in hot paths (typing); a manual character-scan loop for word counting is much more efficient.
+**Action:** Always prefer reference equality checks for complex objects in `useEffect` dependencies or change-detection guards. Avoid allocating temporary arrays in utilities called on every keystroke.

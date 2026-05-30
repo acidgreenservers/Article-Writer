@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import type { Document } from '../types';
 import { countWords, formatTags } from '../utils/documentUtils';
 
@@ -10,8 +11,42 @@ interface SidebarProps {
   isDark: boolean;
 }
 
+/**
+ * BOLT OPTIMIZATION: Memoized individual document item.
+ * Prevents expensive word count recalculations and re-renders for documents
+ * that haven't changed.
+ */
+const DocItem = memo(({
+  doc,
+  isActive,
+  onSelect,
+  isDark
+}: {
+  doc: Document;
+  isActive: boolean;
+  onSelect: (id: string) => void;
+  isDark: boolean;
+}) => {
+  const wc = countWords(doc.content);
+  return (
+    <button
+      onClick={() => onSelect(doc.id)}
+      className="w-full text-left px-3 py-2.5 rounded-md transition-colors"
+      style={{ backgroundColor: isActive ? '#3b82f6' : 'transparent' }}
+      onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = isDark ? '#1c2128' : '#e5e7eb'; }}
+      onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
+    >
+      <div className="font-medium text-sm truncate" style={{ color: isActive ? '#fff' : isDark ? '#e6edf3' : '#1f2937' }}>{doc.title}</div>
+      <div className="text-xs mt-0.5 truncate" style={{ color: isActive ? 'rgba(255,255,255,0.75)' : isDark ? '#6e7681' : '#9ca3af' }}>{formatTags(doc.tags)} • {wc} words</div>
+    </button>
+  );
+});
+
+DocItem.displayName = 'DocItem';
+
 export function Sidebar({ documents, activeDocId, onSelectDoc, onNewDoc, onInfoClick, isDark }: SidebarProps) {
-  const totalWords = documents.reduce((sum, d) => sum + countWords(d.content), 0);
+  // BOLT OPTIMIZATION: Memoize total word count to avoid O(N) recalculation on every typing keystroke
+  const totalWords = useMemo(() => documents.reduce((sum, d) => sum + countWords(d.content), 0), [documents]);
 
   return (
     <div
@@ -43,23 +78,15 @@ export function Sidebar({ documents, activeDocId, onSelectDoc, onNewDoc, onInfoC
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-        {documents.map(doc => {
-          const isActive = doc.id === activeDocId;
-          const wc = countWords(doc.content);
-          return (
-            <button
-              key={doc.id}
-              onClick={() => onSelectDoc(doc.id)}
-              className="w-full text-left px-3 py-2.5 rounded-md transition-colors"
-              style={{ backgroundColor: isActive ? '#3b82f6' : 'transparent' }}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = isDark ? '#1c2128' : '#e5e7eb'; }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              <div className="font-medium text-sm truncate" style={{ color: isActive ? '#fff' : isDark ? '#e6edf3' : '#1f2937' }}>{doc.title}</div>
-              <div className="text-xs mt-0.5 truncate" style={{ color: isActive ? 'rgba(255,255,255,0.75)' : isDark ? '#6e7681' : '#9ca3af' }}>{formatTags(doc.tags)} • {wc} words</div>
-            </button>
-          );
-        })}
+        {documents.map(doc => (
+          <DocItem
+            key={doc.id}
+            doc={doc}
+            isActive={doc.id === activeDocId}
+            onSelect={onSelectDoc}
+            isDark={isDark}
+          />
+        ))}
       </div>
 
       <div className="px-4 py-3 text-xs" style={{ color: isDark ? '#6e7681' : '#9ca3af', borderTop: '1px solid ' + (isDark ? '#21262d' : '#e5e7eb') }}>

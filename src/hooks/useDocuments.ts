@@ -20,7 +20,7 @@ export function useDocuments() {
   const [saveState, setSaveState] = useState<SaveState>('idle');
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const snapshotRef = useRef<string>('');
+  const snapshotRef = useRef<Document[]>([]);
 
   // Initial load
   useEffect(() => {
@@ -35,11 +35,11 @@ export function useDocuments() {
           const newDoc = createNewDocument();
           setDocuments([newDoc]);
           setActiveDocId(newDoc.id);
-          snapshotRef.current = JSON.stringify([newDoc]);
+          snapshotRef.current = [newDoc];
         } else {
           setDocuments(docs);
           setActiveDocId(docs[0].id);
-          snapshotRef.current = JSON.stringify(docs);
+          snapshotRef.current = docs;
         }
       } catch (e) {
         console.error('[useDocuments] Load failed:', e);
@@ -80,20 +80,22 @@ export function useDocuments() {
     if (isLoading) return;
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const current = JSON.stringify(documents);
-    if (current === snapshotRef.current) return;
+    // BOLT OPTIMIZATION: Use reference equality check (O(1)) instead of JSON.stringify (O(N*M))
+    // This avoids expensive serialization on every keystroke.
+    if (documents === snapshotRef.current) return;
 
     timerRef.current = setTimeout(async () => {
       setSaveState('saving');
       try {
-        const prevDocs = JSON.parse(snapshotRef.current || '[]') as Document[];
+        const prevDocs = snapshotRef.current;
         for (const doc of documents) {
           const prevDoc = prevDocs.find(d => d.id === doc.id);
-          if (JSON.stringify(doc) !== JSON.stringify(prevDoc)) {
+          // BOLT OPTIMIZATION: Compare by reference (O(1)) instead of stringifying individual docs
+          if (doc !== prevDoc) {
             await saveDocument(doc);
           }
         }
-        snapshotRef.current = current;
+        snapshotRef.current = documents;
         setSaveState('saved');
         setTimeout(() => setSaveState(prev => prev === 'saved' ? 'idle' : prev), 2000);
       } catch (e) {

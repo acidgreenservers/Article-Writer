@@ -11,9 +11,31 @@ export function createNewDocument(): Document {
   };
 }
 
+/**
+ * BOLT OPTIMIZATION: High-performance word counter.
+ * Avoids creating temporary arrays and strings via split() and regex,
+ * significantly reducing GC pressure during typing.
+ */
 export function countWords(text: string): number {
-  const trimmed = (text || '').trim();
-  return trimmed === '' ? 0 : trimmed.split(/\s+/).length;
+  if (!text) return 0;
+
+  let count = 0;
+  let inWord = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const charCode = text.charCodeAt(i);
+    // Consider whitespace: space, tab, newline, vertical tab, form feed, carriage return
+    const isWhitespace = charCode <= 32;
+
+    if (isWhitespace) {
+      inWord = false;
+    } else if (!inWord) {
+      count++;
+      inWord = true;
+    }
+  }
+
+  return count;
 }
 
 export function formatTags(tags: string[]): string {
