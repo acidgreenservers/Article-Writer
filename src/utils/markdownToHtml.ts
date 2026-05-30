@@ -20,6 +20,8 @@ export function markdownToHtml(markdown: string): string {
     });
   } catch (err) {
     console.error('[markdownToHtml] error:', err);
-    return `<p style="color:#f85149">Error rendering markdown: ${(err as Error).message}</p>`;
+    // Sanitize error message to prevent XSS if it contains user input or unexpected HTML
+    const safeError = DOMPurify.sanitize((err as Error).message);
+    return `<p style="color:#f85149">Error rendering markdown: ${safeError}</p>`;
   }
 }
