@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { Document, DocumentImage, SaveState } from '../types';
+import type { Document, DocumentImage, SaveState, UploadedImage } from '../types';
 import { createNewDocument } from '../utils/documentUtils';
 import {
   getAllDocuments,
@@ -14,13 +14,13 @@ const AUTO_SAVE_MS = 2000;
 
 export function useDocuments() {
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [activeDocId, setActiveDocId] = useState('');
+  const [activeDocId, setActiveDocId] = useState<string>('');
   const [images, setImages] = useState<DocumentImage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [saveState, setSaveState] = useState<SaveState>('idle');
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const snapshotRef = useRef('');
+  const snapshotRef = useRef<string>('');
 
   // Initial load
   useEffect(() => {
@@ -86,7 +86,7 @@ export function useDocuments() {
     timerRef.current = setTimeout(async () => {
       setSaveState('saving');
       try {
-        const prevDocs = JSON.parse(snapshotRef.current) as Document[];
+        const prevDocs = JSON.parse(snapshotRef.current || '[]') as Document[];
         for (const doc of documents) {
           const prevDoc = prevDocs.find(d => d.id === doc.id);
           if (JSON.stringify(doc) !== JSON.stringify(prevDoc)) {
@@ -162,7 +162,7 @@ export function useDocuments() {
   const activeDoc = documents.find(d => d.id === activeDocId) || documents[0];
 
   // Memoize mapped images to avoid memory leaks with createObjectURL
-  const mappedImages = useMemo(() => {
+  const mappedImages = useMemo<UploadedImage[]>(() => {
     return images.map(img => {
       const url = URL.createObjectURL(new Blob([img.data], { type: img.type }));
       return {
