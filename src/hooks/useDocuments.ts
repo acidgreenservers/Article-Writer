@@ -170,15 +170,17 @@ export function useDocuments() {
         name: img.name,
         url,
         type: img.type,
-        size: img.size
+        size: img.size,
+        data: img.data // Include raw binary data for export bundling
       };
     });
   }, [images]);
 
   // Cleanup Blob URLs
   useEffect(() => {
+    const currentUrls = mappedImages.map(img => img.url);
     return () => {
-      mappedImages.forEach(img => URL.revokeObjectURL(img.url));
+      currentUrls.forEach(url => URL.revokeObjectURL(url));
     };
   }, [mappedImages]);
 

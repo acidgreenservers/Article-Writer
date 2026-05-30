@@ -1,11 +1,10 @@
 import { useRef, useState } from 'react';
-import type { UploadedImage } from '../types';
 
 interface ImageUploaderProps {
-  onUpload: (images: UploadedImage[]) => void;
+  onUpload: (files: File[]) => void;
   onViewItems: () => void;
   isDark: boolean;
-  uploadedImages: UploadedImage[];
+  uploadedImages: { id: string; name: string }[];
 }
 
 export function ImageUploader({ onUpload, onViewItems, isDark, uploadedImages }: ImageUploaderProps) {
@@ -15,13 +14,8 @@ export function ImageUploader({ onUpload, onViewItems, isDark, uploadedImages }:
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
     const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-    const newImages: UploadedImage[] = imageFiles.map(file => ({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-      name: file.name,
-      file,
-    }));
-    if (newImages.length > 0) {
-      onUpload([...uploadedImages, ...newImages]);
+    if (imageFiles.length > 0) {
+      onUpload(imageFiles);
     }
   };
 

@@ -159,8 +159,9 @@ export default function App() {
       const reader = new FileReader();
       reader.onload = async (e) => {
         const data = e.target?.result as ArrayBuffer;
+        const imageId = crypto.randomUUID();
         await addImage({
-          id: crypto.randomUUID(),
+          id: imageId,
           documentId: activeDoc.id,
           name: file.name,
           type: file.type,
@@ -168,10 +169,11 @@ export default function App() {
           data,
           createdAt: Date.now()
         });
+        handleInsertImage(`![${file.name}](items/${file.name})`);
       };
       reader.readAsArrayBuffer(file);
     }
-  }, [activeDoc, addImage]);
+  }, [activeDoc, addImage, handleInsertImage]);
 
   if (isLoading || !activeDoc) {
     return (
@@ -224,6 +226,7 @@ export default function App() {
           onToggleTheme={() => setIsDark((d) => !d)}
           isLight={!isDark}
           onImageClick={() => setShowImageUploader((p) => !p)}
+          saveState={saveState}
         />
 
         {showImageUploader && (
