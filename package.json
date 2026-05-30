@@ -9,6 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@types/dompurify": "^3.0.5",
+    "dompurify": "^3.4.7",
     "marked": "^18.0.4",
     "mathjax": "^3.2.2",
     "mathjax-full": "^3.2.1",

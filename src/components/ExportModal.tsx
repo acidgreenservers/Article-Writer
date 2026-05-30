@@ -12,16 +12,17 @@ interface ExportModalProps {
 
 export function ExportModal({ document, images, format, isDark, onClose }: ExportModalProps) {
   const [exportType, setExportType] = useState<'raw' | 'zip'>('raw');
+  const [htmlTheme, setHtmlTheme] = useState<'light' | 'dark'>(isDark ? 'dark' : 'light');
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
       if (exportType === 'zip') {
-        await exportAsZip(document, images, format);
+        await exportAsZip(document, images, format, htmlTheme);
       } else {
         if (format === 'html') {
-          await exportAsRawHtml(document);
+          await exportAsRawHtml(document, htmlTheme);
         } else {
           await exportAsRawMarkdown(document);
         }
@@ -29,7 +30,6 @@ export function ExportModal({ document, images, format, isDark, onClose }: Expor
       onClose();
     } catch (err) {
       console.error('[ExportModal] Export failed:', err);
-      // We could add an error state here if needed, but for now just logging
     } finally {
       setIsExporting(false);
     }
@@ -90,58 +90,95 @@ export function ExportModal({ document, images, format, isDark, onClose }: Expor
 
         {/* Body */}
         <div className="px-6 py-6 space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setExportType('raw')}
-              className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all group"
-              style={{
-                backgroundColor: exportType === 'raw' ? (isDark ? '#1c2128' : '#eff6ff') : 'transparent',
-                borderColor: exportType === 'raw' ? '#3b82f6' : (isDark ? '#30363d' : '#e5e7eb'),
-              }}
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-                style={{ backgroundColor: exportType === 'raw' ? '#3b82f6' : (isDark ? '#21262d' : '#f3f4f6') }}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: isDark ? '#8b949e' : '#6b7280' }}>
+              Method
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setExportType('raw')}
+                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all group"
+                style={{
+                  backgroundColor: exportType === 'raw' ? (isDark ? '#1c2128' : '#eff6ff') : 'transparent',
+                  borderColor: exportType === 'raw' ? '#3b82f6' : (isDark ? '#30363d' : '#e5e7eb'),
+                }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={exportType === 'raw' ? '#fff' : '#3b82f6'} strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-              </div>
-              <div className="text-center">
-                <div className="text-sm font-bold" style={{ color: isDark ? '#e6edf3' : '#1f2937' }}>Raw File</div>
-                <div className="text-[10px] opacity-60" style={{ color: isDark ? '#8b949e' : '#6b7280' }}>
-                  {formatExt} only
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                  style={{ backgroundColor: exportType === 'raw' ? '#3b82f6' : (isDark ? '#21262d' : '#f3f4f6') }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={exportType === 'raw' ? '#fff' : '#3b82f6'} strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
                 </div>
-              </div>
-            </button>
+                <div className="text-center">
+                  <div className="text-sm font-bold" style={{ color: isDark ? '#e6edf3' : '#1f2937' }}>Raw File</div>
+                  <div className="text-[10px] opacity-60" style={{ color: isDark ? '#8b949e' : '#6b7280' }}>
+                    {formatExt} only
+                  </div>
+                </div>
+              </button>
 
-            <button
-              onClick={() => setExportType('zip')}
-              className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all group"
-              style={{
-                backgroundColor: exportType === 'zip' ? (isDark ? '#1c2128' : '#eff6ff') : 'transparent',
-                borderColor: exportType === 'zip' ? '#3b82f6' : (isDark ? '#30363d' : '#e5e7eb'),
-              }}
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-                style={{ backgroundColor: exportType === 'zip' ? '#3b82f6' : (isDark ? '#21262d' : '#f3f4f6') }}
+              <button
+                onClick={() => setExportType('zip')}
+                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all group"
+                style={{
+                  backgroundColor: exportType === 'zip' ? (isDark ? '#1c2128' : '#eff6ff') : 'transparent',
+                  borderColor: exportType === 'zip' ? '#3b82f6' : (isDark ? '#30363d' : '#e5e7eb'),
+                }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={exportType === 'zip' ? '#fff' : '#3b82f6'} strokeWidth="2">
-                  <path d="M21 8v13H3V8" />
-                  <path d="M1 3h22v5H1z" />
-                  <path d="M10 12h4" />
-                </svg>
-              </div>
-              <div className="text-center">
-                <div className="text-sm font-bold" style={{ color: isDark ? '#e6edf3' : '#1f2937' }}>ZIP Bundle</div>
-                <div className="text-[10px] opacity-60" style={{ color: isDark ? '#8b949e' : '#6b7280' }}>
-                  {images.length} item{images.length !== 1 ? 's' : ''} included
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                  style={{ backgroundColor: exportType === 'zip' ? '#3b82f6' : (isDark ? '#21262d' : '#f3f4f6') }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={exportType === 'zip' ? '#fff' : '#3b82f6'} strokeWidth="2">
+                    <path d="M21 8v13H3V8" />
+                    <path d="M1 3h22v5H1z" />
+                    <path d="M10 12h4" />
+                  </svg>
                 </div>
-              </div>
-            </button>
+                <div className="text-center">
+                  <div className="text-sm font-bold" style={{ color: isDark ? '#e6edf3' : '#1f2937' }}>ZIP Bundle</div>
+                  <div className="text-[10px] opacity-60" style={{ color: isDark ? '#8b949e' : '#6b7280' }}>
+                    {images.length} item{images.length !== 1 ? 's' : ''} included
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
+
+          {format === 'html' && (
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: isDark ? '#8b949e' : '#6b7280' }}>
+                Appearance
+              </label>
+              <div className="flex gap-2 p-1 rounded-lg" style={{ backgroundColor: isDark ? '#0d1117' : '#f3f4f6' }}>
+                <button
+                  onClick={() => setHtmlTheme('light')}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-bold transition-all"
+                  style={{
+                    backgroundColor: htmlTheme === 'light' ? (isDark ? '#30363d' : '#ffffff') : 'transparent',
+                    color: htmlTheme === 'light' ? (isDark ? '#fff' : '#1f2937') : (isDark ? '#8b949e' : '#6b7280'),
+                    boxShadow: htmlTheme === 'light' && !isDark ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  ☀️ Light
+                </button>
+                <button
+                  onClick={() => setHtmlTheme('dark')}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-bold transition-all"
+                  style={{
+                    backgroundColor: htmlTheme === 'dark' ? (isDark ? '#30363d' : '#ffffff') : 'transparent',
+                    color: htmlTheme === 'dark' ? (isDark ? '#fff' : '#1f2937') : (isDark ? '#8b949e' : '#6b7280'),
+                    boxShadow: htmlTheme === 'dark' && !isDark ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  🌙 Dark
+                </button>
+              </div>
+            </div>
+          )}
 
           <div
             className="p-4 rounded-lg text-xs leading-relaxed"
@@ -152,8 +189,8 @@ export function ExportModal({ document, images, format, isDark, onClose }: Expor
             }}
           >
             {exportType === 'zip'
-              ? `Creating a production-ready ZIP archive containing your ${formatLabel} document and all ${images.length} attached assets in an /items folder.`
-              : `Downloading the standalone ${formatLabel} document directly to your device.`}
+              ? `Creating a production-ready ZIP archive containing your ${formatLabel} document (${htmlTheme} theme) and all ${images.length} attached assets.`
+              : `Downloading the standalone ${formatLabel} document (${htmlTheme} theme) directly to your device.`}
           </div>
         </div>
 
