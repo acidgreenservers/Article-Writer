@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { countWords } from './utils/documentUtils';
 import { useDocuments } from './hooks/useDocuments';
 import { Sidebar } from './components/Sidebar';
@@ -28,13 +28,13 @@ export default function App() {
     removeImage,
   } = useDocuments();
 
-  const [isDark, setIsDark] = useState(true);
-  const [showPreview, setShowPreview] = useState(false);
-  const [showImageUploader, setShowImageUploader] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showUploadedItems, setShowUploadedItems] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [isDark, setIsDark] = useState<boolean>(true);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [showImageUploader, setShowImageUploader] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [showUploadedItems, setShowUploadedItems] = useState<boolean>(false);
+  const [showExportModal, setShowExportModal] = useState<boolean>(false);
+  const [showLinkModal, setShowLinkModal] = useState<boolean>(false);
   const [exportFormat, setExportFormat] = useState<'md' | 'html'>('md');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -151,13 +151,22 @@ export default function App() {
     }
   }, [activeDoc]);
 
-  const handleUploadImages = useCallback(async (newImages: any[]) => {
-    for (const img of newImages) {
-      await addImage({
-        ...img,
-        documentId: activeDoc.id,
-        createdAt: Date.now()
-      });
+  const handleUploadImages = useCallback(async (files: File[]) => {
+    for (const file of files) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const data = e.target?.result as ArrayBuffer;
+        await addImage({
+          id: crypto.randomUUID(),
+          documentId: activeDoc.id,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          data,
+          createdAt: Date.now()
+        });
+      };
+      reader.readAsArrayBuffer(file);
     }
   }, [activeDoc, addImage]);
 
@@ -247,10 +256,10 @@ export default function App() {
 
       {showPreview && <PreviewModal document={activeDoc} isDark={isDark} onClose={() => setShowPreview(false)} />}
       {showDeleteConfirm && <DeleteConfirmModal documentTitle={activeDoc.title} isDark={isDark} onConfirm={() => { removeDocument(activeDoc.id); setShowDeleteConfirm(false); }} onCancel={() => setShowDeleteConfirm(false)} />}
-      {showUploadedItems && <UploadedItemsModal images={images as any} isDark={isDark} onInsert={handleInsertImage} onDelete={removeImage} onClose={() => setShowUploadedItems(false)} />}
-      {showExportModal && <ExportModal document={activeDoc} images={images as any} format={exportFormat} isDark={isDark} onClose={() => setShowExportModal(false)} />}
+      {showUploadedItems && <UploadedItemsModal images={images} isDark={isDark} onInsert={handleInsertImage} onDelete={removeImage} onClose={() => setShowUploadedItems(false)} />}
+      {showExportModal && <ExportModal document={activeDoc} images={images} format={exportFormat} isDark={isDark} onClose={() => setShowExportModal(false)} />}
       {showLinkModal && <LinkModal isDark={isDark} onInsert={handleInsertLink} onClose={() => setShowLinkModal(false)} />}
-      {saveState === 'saving' && <SaveToast isDark={isDark} />}
+      {(saveState === 'saving' || saveState === 'saved') && <SaveToast isDark={isDark} />}
     </div>
   );
 }

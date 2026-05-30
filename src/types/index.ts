@@ -7,10 +7,22 @@ export interface Document {
   updatedAt: number;
 }
 
+export interface DocumentImage {
+  id: string;
+  documentId: string;
+  name: string;
+  type: string;
+  size: number;
+  data: ArrayBuffer;
+  createdAt: number;
+}
+
 export interface UploadedImage {
   id: string;
   name: string;
-  file: File;
+  url: string;
+  type: string;
+  size: number;
 }
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
