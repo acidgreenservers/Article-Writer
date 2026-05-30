@@ -1,6 +1,6 @@
 import type { Document, UploadedImage } from '../types';
 import { createZip } from './zipWriter';
-import { markdownToHtml } from './markdownToHtml';
+import { generateHtmlExport } from './htmlExportTemplate';
 
 /**
  * exporter.ts — Centralized export logic
@@ -24,7 +24,7 @@ export async function exportAsZip(
   theme: 'light' | 'dark' = 'dark'
 ): Promise<void> {
   const filename = `${sanitize(doc.title)}.${format}`;
-  const docContent = format === 'md' ? buildMarkdownContent(doc) : buildHtmlContent(doc, theme);
+  const docContent = format === 'md' ? buildMarkdownContent(doc) : buildHtmlContent(doc, theme, images);
 
   const entries = [
     {
@@ -59,39 +59,8 @@ function buildMarkdownContent(doc: Document): string {
   return `# ${doc.title || 'Untitled Document'}${tags}\n\n${doc.content}`;
 }
 
-function buildHtmlContent(doc: Document, theme: 'light' | 'dark'): string {
-  const bodyHtml = markdownToHtml(doc.content);
-  const isDark = theme === 'dark';
-
-  const bg = isDark ? '#0d1117' : '#ffffff';
-  const text = isDark ? '#e6edf3' : '#1f2937';
-  const muted = isDark ? '#8b949e' : '#4b5563';
-  const codeBg = isDark ? '#161b22' : '#f3f4f6';
-  const border = isDark ? '#30363d' : '#e5e7eb';
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(doc.title || 'Untitled Document')}</title>
-  <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; background-color: ${bg}; color: ${text}; }
-    img { max-width: 100%; border-radius: 8px; }
-    pre { background: ${codeBg}; padding: 16px; border-radius: 8px; overflow-x: auto; border: 1px solid ${border}; }
-    code { font-family: monospace; }
-    blockquote { border-left: 4px solid #3b82f6; padding-left: 16px; color: ${muted}; font-style: italic; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid ${border}; padding: 8px; text-align: left; }
-    th { background: ${codeBg}; }
-    h1 { border-bottom: 1px solid ${border}; padding-bottom: 10px; }
-  </style>
-</head>
-<body>
-  <h1>${escapeHtml(doc.title || 'Untitled Document')}</h1>
-  ${bodyHtml}
-</body>
-</html>`;
+function buildHtmlContent(doc: Document, theme: 'light' | 'dark', images: UploadedImage[] = []): string {
+  return generateHtmlExport(doc, images, theme);
 }
 
 function sanitize(name: string): string {
