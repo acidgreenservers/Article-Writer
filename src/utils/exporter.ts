@@ -12,18 +12,19 @@ export async function exportAsRawMarkdown(doc: Document): Promise<void> {
   downloadTextFile(content, `${sanitize(doc.title)}.md`, 'text/markdown');
 }
 
-export async function exportAsRawHtml(doc: Document): Promise<void> {
-  const html = buildHtmlContent(doc);
+export async function exportAsRawHtml(doc: Document, theme: 'light' | 'dark' = 'dark'): Promise<void> {
+  const html = buildHtmlContent(doc, theme);
   downloadTextFile(html, `${sanitize(doc.title)}.html`, 'text/html');
 }
 
 export async function exportAsZip(
   doc: Document,
   images: UploadedImage[],
-  format: 'md' | 'html'
+  format: 'md' | 'html',
+  theme: 'light' | 'dark' = 'dark'
 ): Promise<void> {
   const filename = `${sanitize(doc.title)}.${format}`;
-  const docContent = format === 'md' ? buildMarkdownContent(doc) : buildHtmlContent(doc);
+  const docContent = format === 'md' ? buildMarkdownContent(doc) : buildHtmlContent(doc, theme);
 
   const entries = [
     {
@@ -58,9 +59,16 @@ function buildMarkdownContent(doc: Document): string {
   return `# ${doc.title || 'Untitled Document'}${tags}\n\n${doc.content}`;
 }
 
-function buildHtmlContent(doc: Document): string {
-  // Use the same styling as Preview but in a standalone template
+function buildHtmlContent(doc: Document, theme: 'light' | 'dark'): string {
   const bodyHtml = markdownToHtml(doc.content);
+  const isDark = theme === 'dark';
+
+  const bg = isDark ? '#0d1117' : '#ffffff';
+  const text = isDark ? '#e6edf3' : '#1f2937';
+  const muted = isDark ? '#8b949e' : '#4b5563';
+  const codeBg = isDark ? '#161b22' : '#f3f4f6';
+  const border = isDark ? '#30363d' : '#e5e7eb';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,14 +76,15 @@ function buildHtmlContent(doc: Document): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(doc.title || 'Untitled Document')}</title>
   <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1f2937; }
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; background-color: ${bg}; color: ${text}; }
     img { max-width: 100%; border-radius: 8px; }
-    pre { background: #f3f4f6; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    pre { background: ${codeBg}; padding: 16px; border-radius: 8px; overflow-x: auto; border: 1px solid ${border}; }
     code { font-family: monospace; }
-    blockquote { border-left: 4px solid #3b82f6; padding-left: 16px; color: #4b5563; font-style: italic; }
+    blockquote { border-left: 4px solid #3b82f6; padding-left: 16px; color: ${muted}; font-style: italic; }
     table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
-    th { background: #f9fafb; }
+    th, td { border: 1px solid ${border}; padding: 8px; text-align: left; }
+    th { background: ${codeBg}; }
+    h1 { border-bottom: 1px solid ${border}; padding-bottom: 10px; }
   </style>
 </head>
 <body>
