@@ -10,9 +10,11 @@ interface ToolbarProps {
   isLight: boolean;
   onImageClick: () => void;
   saveState: SaveState;
+  /** When true, only show formatting buttons (mobile mode). Action buttons move to MobileBar. */
+  formatOnly?: boolean;
 }
 
-export function Toolbar({ onFormat, onAction, isDark, isPreview, onTogglePreview, onToggleTheme, isLight, onImageClick, saveState }: ToolbarProps) {
+export function Toolbar({ onFormat, onAction, isDark, isPreview, onTogglePreview, onToggleTheme, isLight, onImageClick, saveState, formatOnly = false }: ToolbarProps) {
   const fmt: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     minWidth: 28, height: 28, padding: '0 6px', borderRadius: 4,
@@ -41,6 +43,7 @@ export function Toolbar({ onFormat, onAction, isDark, isPreview, onTogglePreview
 
   return (
     <div className="flex items-center gap-1 px-3 py-1.5 flex-wrap" style={{ backgroundColor: isDark ? '#0d1117' : '#fff', borderBottom: '1px solid ' + (isDark ? '#21262d' : '#e5e7eb') }}>
+      {/* Formatting buttons — always shown */}
       <button style={fmt} onMouseEnter={hF} onMouseLeave={uF} onFocus={hF} onBlur={uF} onClick={() => onFormat('bold')} aria-label="Bold" title="Bold"><b>B</b></button>
       <button style={fmt} onMouseEnter={hF} onMouseLeave={uF} onFocus={hF} onBlur={uF} onClick={() => onFormat('italic')} aria-label="Italic" title="Italic"><i>I</i></button>
       <button style={fmt} onMouseEnter={hF} onMouseLeave={uF} onFocus={hF} onBlur={uF} onClick={() => onFormat('underline')} aria-label="Underline" title="Underline"><u>U</u></button>
@@ -54,14 +57,20 @@ export function Toolbar({ onFormat, onAction, isDark, isPreview, onTogglePreview
       <button style={fmt} onMouseEnter={hF} onMouseLeave={uF} onFocus={hF} onBlur={uF} onClick={() => onFormat('code')} aria-label="Code Block" title="Code Block">{'{ }'}</button>
       <button style={fmt} onMouseEnter={hF} onMouseLeave={uF} onFocus={hF} onBlur={uF} onClick={() => onFormat('link')} aria-label="Insert Link" title="Insert Link">🔗</button>
       <button style={fmt} onMouseEnter={hF} onMouseLeave={uF} onFocus={hF} onBlur={uF} onClick={onImageClick} aria-label="Insert Image" title="Insert Image">🖼️</button>
-      <div style={sep} />
-      <button style={{ ...act, backgroundColor: isPreview ? (isDark ? '#2d4a6f' : '#93c5fd') : act.backgroundColor }} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={onTogglePreview} aria-label="Toggle Preview" title="Toggle Preview">👁 Preview</button>
-      <button style={{ ...act, ...(saveBg ? { backgroundColor: saveBg } : {}) }} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={() => onAction('save')} aria-label={saveLabel} title={saveLabel}>{saveLabel}</button>
-      <button style={act} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={() => onAction('html')} aria-label="Export as HTML" title="Export as HTML">HTML</button>
-      <button style={act} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={() => onAction('md')} aria-label="Export as Markdown" title="Export as Markdown">MD</button>
-      <button style={act} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={() => onAction('delete')} aria-label="Delete Document" title="Delete Document">🗑️</button>
-      <div className="flex-1" />
-      <button style={fmt} onMouseEnter={hF} onMouseLeave={uF} onFocus={hF} onBlur={uF} onClick={onToggleTheme} aria-label={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'} title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}>{isLight ? '🌙' : '☀️'}</button>
+
+      {/* Action buttons — hidden in formatOnly (mobile) mode */}
+      {!formatOnly && (
+        <>
+          <div style={sep} />
+          <button style={{ ...act, backgroundColor: isPreview ? (isDark ? '#2d4a6f' : '#93c5fd') : act.backgroundColor }} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={onTogglePreview} aria-label="Toggle Preview" title="Toggle Preview">👁 Preview</button>
+          <button style={{ ...act, ...(saveBg ? { backgroundColor: saveBg } : {}) }} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={() => onAction('save')} aria-label={saveLabel} title={saveLabel}>{saveLabel}</button>
+          <button style={act} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={() => onAction('html')} aria-label="Export as HTML" title="Export as HTML">HTML</button>
+          <button style={act} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={() => onAction('md')} aria-label="Export as Markdown" title="Export as Markdown">MD</button>
+          <button style={act} onMouseEnter={hA} onMouseLeave={uA} onFocus={hA} onBlur={uA} onClick={() => onAction('delete')} aria-label="Delete Document" title="Delete Document">🗑️</button>
+          <div className="flex-1" />
+          <button style={fmt} onMouseEnter={hF} onMouseLeave={uF} onFocus={hF} onBlur={uF} onClick={onToggleTheme} aria-label={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'} title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}>{isLight ? '🌙' : '☀️'}</button>
+        </>
+      )}
     </div>
   );
 }

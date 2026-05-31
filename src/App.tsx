@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { countWords } from './utils/documentUtils';
 import { useDocuments } from './hooks/useDocuments';
+import { useIsMobile, useIsTablet } from './hooks/useMediaQuery';
 import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 import { PreviewModal } from './components/PreviewModal';
@@ -13,6 +14,7 @@ import { ExportModal } from './components/ExportModal';
 import { LinkModal } from './components/LinkModal';
 import { InfoModal } from './components/InfoModal';
 import { TagInput } from './components/TagInput';
+import { MobileBar } from './components/MobileBar';
 
 export default function App() {
   const {
@@ -39,6 +41,16 @@ export default function App() {
   const [showLinkModal, setShowLinkModal] = useState<boolean>(false);
   const [showInfoModal, setShowInfoModal] = useState<boolean>(false);
   const [exportFormat, setExportFormat] = useState<'md' | 'html'>('md');
+
+  // Responsive breakpoints
+  const isMobile = useIsMobile();   // < 768px
+  const isTablet = useIsTablet();   // < 1024px
+
+  // Mobile/tablet sidebar drawer state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Mobile: toggle format bar visibility
+  const [showFormatBar, setShowFormatBar] = useState<boolean>(true);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -183,51 +195,117 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="flex h-screen w-screen overflow-hidden" style={{ backgroundColor: isDark ? '#0d1117' : '#ffffff' }}>
-      <Sidebar
-        documents={documents}
-        activeDocId={activeDocId}
-        onSelectDoc={setActiveDocId}
-        onNewDoc={addDocument}
-        onInfoClick={() => setShowInfoModal(true)}
+  // --- Hamburger button (tablet + mobile) ---
+  const hamburgerBtn = isTablet ? (
+    <button
+      onClick={() => setSidebarOpen(true)}
+      className="flex items-center justify-center"
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: 8,
+        border: 'none',
+        cursor: 'pointer',
+        backgroundColor: 'transparent',
+        color: isDark ? '#e6edf3' : '#374151',
+        fontSize: 20,
+        flexShrink: 0,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.backgroundColor = isDark ? '#21262d' : '#e5e7eb'; }}
+      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+      aria-label="Open sidebar"
+    >
+      ☰
+    </button>
+  ) : null;
+
+  // --- Title input with optional hamburger ---
+  const titleSection = (
+    <div className="px-3 pt-3 space-y-2">
+      <div className="flex items-center gap-2">
+        {hamburgerBtn}
+        <input
+          type="text"
+          value={activeDoc.title}
+          onChange={(e) => updateDocument(activeDoc.id, { title: e.target.value })}
+          placeholder="Untitled Document"
+          className="flex-1 px-3.5 py-2 rounded-md text-sm outline-none transition-colors"
+          style={{
+            backgroundColor: isDark ? '#1c2128' : '#f3f4f6',
+            color: isDark ? '#e6edf3' : '#1f2937',
+            border: '1px solid ' + (isDark ? '#30363d' : '#e5e7eb'),
+            fontStyle: activeDoc.title === 'Untitled Document' ? 'italic' : 'normal',
+          }}
+        />
+      </div>
+      <TagInput
+        tags={activeDoc.tags}
+        allDocuments={documents}
+        onChange={(tags) => updateDocument(activeDoc.id, { tags })}
         isDark={isDark}
       />
+    </div>
+  );
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="px-3 pt-3 space-y-2">
-          <input
-            type="text"
-            value={activeDoc.title}
-            onChange={(e) => updateDocument(activeDoc.id, { title: e.target.value })}
-            placeholder="Untitled Document"
-            className="w-full px-3.5 py-2 rounded-md text-sm outline-none transition-colors"
-            style={{
-              backgroundColor: isDark ? '#1c2128' : '#f3f4f6',
-              color: isDark ? '#e6edf3' : '#1f2937',
-              border: '1px solid ' + (isDark ? '#30363d' : '#e5e7eb'),
-              fontStyle: activeDoc.title === 'Untitled Document' ? 'italic' : 'normal',
-            }}
-          />
-          <TagInput
-            tags={activeDoc.tags}
-            allDocuments={documents}
-            onChange={(tags) => updateDocument(activeDoc.id, { tags })}
-            isDark={isDark}
-          />
-        </div>
-
-        <Toolbar
-          onFormat={handleFormat}
-          onAction={handleAction}
+  return (
+    <div className="flex h-screen w-screen overflow-hidden" style={{ backgroundColor: isDark ? '#0d1117' : '#ffffff' }}>
+      {/* Sidebar — desktop: inline always visible, tablet/mobile: drawer */}
+      {isTablet ? (
+        <Sidebar
+          documents={documents}
+          activeDocId={activeDocId}
+          onSelectDoc={setActiveDocId}
+          onNewDoc={addDocument}
+          onInfoClick={() => setShowInfoModal(true)}
           isDark={isDark}
-          isPreview={showPreview}
-          onTogglePreview={() => setShowPreview((p) => !p)}
-          onToggleTheme={() => setIsDark((d) => !d)}
-          isLight={!isDark}
-          onImageClick={() => setShowImageUploader((p) => !p)}
-          saveState={saveState}
+          isDrawer
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
+      ) : (
+        <Sidebar
+          documents={documents}
+          activeDocId={activeDocId}
+          onSelectDoc={setActiveDocId}
+          onNewDoc={addDocument}
+          onInfoClick={() => setShowInfoModal(true)}
+          isDark={isDark}
+        />
+      )}
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-w-0" style={{ paddingBottom: isMobile ? 60 : 0 }}>
+        {titleSection}
+
+        {/* Toolbar — full on desktop/tablet, format-only on mobile (collapsible) */}
+        {(!isMobile || showFormatBar) && (
+          <Toolbar
+            onFormat={handleFormat}
+            onAction={handleAction}
+            isDark={isDark}
+            isPreview={showPreview}
+            onTogglePreview={() => setShowPreview((p) => !p)}
+            onToggleTheme={() => setIsDark((d) => !d)}
+            isLight={!isDark}
+            onImageClick={() => setShowImageUploader((p) => !p)}
+            saveState={saveState}
+            formatOnly={isMobile}
+          />
+        )}
+
+        {/* Mobile: collapsed format bar indicator — tap to expand */}
+        {isMobile && !showFormatBar && (
+          <div
+            className="flex items-center justify-center py-1.5 cursor-pointer select-none"
+            style={{
+              backgroundColor: isDark ? '#0d1117' : '#fff',
+              borderBottom: '1px solid ' + (isDark ? '#21262d' : '#e5e7eb'),
+            }}
+            onClick={() => setShowFormatBar(true)}
+          >
+            <span className="text-xs font-medium" style={{ color: isDark ? '#58a6ff' : '#3b82f6' }}>▲ Format</span>
+          </div>
+        )}
 
         {showImageUploader && (
           <div className="px-3 py-2" style={{ borderBottom: '1px solid ' + (isDark ? '#21262d' : '#e5e7eb') }}>
@@ -255,8 +333,23 @@ export default function App() {
           />
         </div>
 
-        <StatusBar wordCount={wordCount} isDark={isDark} />
+        <StatusBar wordCount={wordCount} isDark={isDark} saveState={saveState} isMobile={isMobile} />
       </div>
+
+      {/* Mobile bottom bar */}
+      {isMobile && (
+        <MobileBar
+          isDark={isDark}
+          onNewDoc={addDocument}
+          onPreview={() => setShowPreview(true)}
+          onToggleTheme={() => setIsDark(d => !d)}
+          onToggleFormatBar={() => setShowFormatBar(p => !p)}
+          onSave={() => handleAction('save')}
+          onExportHtml={() => { setExportFormat('html'); setShowExportModal(true); }}
+          onExportMd={() => { setExportFormat('md'); setShowExportModal(true); }}
+          onDelete={() => setShowDeleteConfirm(true)}
+        />
+      )}
 
       {showPreview && <PreviewModal document={activeDoc} isDark={isDark} onClose={() => setShowPreview(false)} />}
       {showDeleteConfirm && <DeleteConfirmModal documentTitle={activeDoc.title} isDark={isDark} onConfirm={() => { removeDocument(activeDoc.id); setShowDeleteConfirm(false); }} onCancel={() => setShowDeleteConfirm(false)} />}

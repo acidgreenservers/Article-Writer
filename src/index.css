@@ -59,3 +59,26 @@
     color: #656d76;
   }
 }
+
+/* PWA standalone mode adjustments */
+@media all and (display-mode: standalone) {
+  body {
+    /* Account for iOS status bar in standalone mode */
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* Touch action improvements for mobile */
+@media (max-width: 1023px) {
+  textarea {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input {
+    -webkit-tap-highlight-color: transparent;
+  }
+}

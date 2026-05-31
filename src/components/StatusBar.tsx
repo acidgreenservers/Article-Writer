@@ -4,9 +4,10 @@ interface StatusBarProps {
   wordCount: number;
   isDark: boolean;
   saveState: SaveState;
+  isMobile?: boolean;
 }
 
-export function StatusBar({ wordCount, isDark, saveState }: StatusBarProps) {
+export function StatusBar({ wordCount, isDark, saveState, isMobile = false }: StatusBarProps) {
   const indicator = saveState === 'saving' ? '⏳ Saving...' : saveState === 'saved' ? '✓ Saved' : saveState === 'error' ? '✗ Save failed' : '';
   const indicatorColor = saveState === 'saved' ? '#3fb950' : saveState === 'error' ? '#f85149' : '#d29922';
 
@@ -17,7 +18,7 @@ export function StatusBar({ wordCount, isDark, saveState }: StatusBarProps) {
         🔒 <span style={{ color: '#3fb950' }}>Local Only</span>
         {indicator && <span className="ml-2" style={{ color: indicatorColor }}>{indicator}</span>}
       </span>
-      <span>UTF-8</span>
+      {!isMobile && <span>UTF-8</span>}
     </div>
   );
 }
