@@ -1,3 +1,7 @@
+## 2025-05-20 - [Component-Scoped Caching for Active Typing Paths]
+**Learning:** Caching text-derived metrics (like word counts) using a global `Map` keyed by document content string fails during active typing because every keystroke produces a unique string key, resulting in 0% cache hits and Map allocation overhead. Instead, caching in a React component `useRef<Map<string, { content: string; count: number }>>()` keyed by document ID allows inactive documents (whose content string reference is unchanged) to hit in $O(1)$ time without polluting global state or creating Map key thrashing while typing.
+**Action:** Use component-scoped `useRef` maps keyed by entity ID to reuse calculations for unchanged items in React lists during active typing.
+
 ## 2025-05-15 - [React Hook & Utility Optimization]
 **Learning:** High-frequency React hooks (like auto-save on typing) suffer significantly from $O(N \cdot M)$ operations such as `JSON.stringify` for change detection. In an immutable state system, reference equality check (`===`) is $O(1)$ and serves as a highly effective gate. Additionally, standard string utilities like `split()` can cause significant GC pressure in hot paths (typing); a manual character-scan loop for word counting is much more efficient.
 **Action:** Always prefer reference equality checks for complex objects in `useEffect` dependencies or change-detection guards. Avoid allocating temporary arrays in utilities called on every keystroke.
