@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { getTagColor, getAllTags } from '../utils/tags';
 import { darkTheme, lightTheme, type ThemeColors } from '../utils/theme';
 
@@ -17,10 +17,11 @@ export function TagInput({ tags, allDocuments, onChange, isDark }: TagInputProps
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const allTags = getAllTags(allDocuments);
-  const suggestions = allTags.filter(
-    tag => !tags.includes(tag) && tag.toLowerCase().includes(inputValue.toLowerCase())
-  );
+  const allTags = useMemo(() => getAllTags(allDocuments), [allDocuments]);
+  const suggestions = useMemo(() => {
+    const q = inputValue.toLowerCase();
+    return allTags.filter(tag => !tags.includes(tag) && tag.toLowerCase().includes(q));
+  }, [allTags, tags, inputValue]);
 
   const addTag = useCallback((tag: string) => {
     const trimmed = tag.trim().toLowerCase();

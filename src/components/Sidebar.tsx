@@ -63,7 +63,27 @@ export function Sidebar({
 }: SidebarProps) {
   const [search, setSearch] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
-  const totalWords = useMemo(() => documents.reduce((sum, d) => sum + countWords(d.content), 0), [documents]);
+
+  // BOLT OPTIMIZATION: Cache per-document word counts in a component ref Map.
+  // When documents array changes on typing, inactive documents reuse their cached count in O(1).
+  const docCountsRef = useRef<Map<string, { content: string; count: number }>>(new Map());
+
+  const totalWords = useMemo(() => {
+    const cache = docCountsRef.current;
+    let sum = 0;
+    for (let i = 0; i < documents.length; i++) {
+      const d = documents[i];
+      const cached = cache.get(d.id);
+      if (cached && cached.content === d.content) {
+        sum += cached.count;
+      } else {
+        const count = countWords(d.content);
+        cache.set(d.id, { content: d.content, count });
+        sum += count;
+      }
+    }
+    return sum;
+  }, [documents]);
 
   // Focus search input when drawer opens
   useEffect(() => {
